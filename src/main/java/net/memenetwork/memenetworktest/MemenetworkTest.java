@@ -3,8 +3,6 @@ package net.memenetwork.memenetworktest;
 import com.google.inject.Inject;
 import org.slf4j.Logger;
 import org.spongepowered.api.Sponge;
-import org.spongepowered.api.block.BlockSnapshot;
-import org.spongepowered.api.block.BlockState;
 import org.spongepowered.api.command.CommandResult;
 import org.spongepowered.api.command.args.GenericArguments;
 import org.spongepowered.api.command.spec.CommandSpec;
@@ -17,6 +15,8 @@ import org.spongepowered.api.plugin.Plugin;
 import org.spongepowered.api.text.Text;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.UUID;
 
 @Plugin(
         id = "memenetwork-test",
@@ -32,7 +32,8 @@ public class MemenetworkTest {
     @Inject
     private Logger logger;
 
-    private ArrayList<BlockState> blockList = new ArrayList<>();
+    private ArrayList<String> blockList = new ArrayList<>();
+    private HashMap<UUID, Integer> map = new HashMap<>();
 
 
     @Listener
@@ -44,7 +45,7 @@ public class MemenetworkTest {
                 .permission("memenetwork.add")
                 .executor((source, args) -> {
                     if (source instanceof Player) {
-                        BlockState block = args.<BlockState>getOne("block").get();
+                        String block = args.<String>getOne("block").get();
                         blockList.add(block);
                         source.sendMessage(Text.of(block + " has been added!"));
                     }
@@ -52,16 +53,23 @@ public class MemenetworkTest {
                 })
                 .build();
 
-        Sponge.getCommandManager().register(this, cmd, "add");
+        Sponge.getCommandManager().register(this, cmd, "addlimit");
     }
 
     @Listener
     public void onBlockPlace(ChangeBlockEvent.Place event, @Root Player player) {
-        BlockSnapshot targetBlock = event.getTransactions().get(0).getFinal();
+        String targetBlock = event.getTransactions().get(0).getFinal().getState().getType().getId();
 
-        if (blockList.contains(targetBlock)) {
+        if (!map.containsKey(player.getUniqueId())) {
+            map.put(player.getUniqueId(), 0);
+        }
+
+        if (blockList.contains(targetBlock) && map.get(player.getUniqueId()) > 10) {
+
+            int count = map.get(player.getUniqueId());
+            map.put(player.getUniqueId(), count + 1);
             event.setCancelled(true);
-            player.sendMessage(Text.of("You are not allowed to place " + targetBlock));
+            player.sendMessage(Text.of("You are not allowed to place more of " + targetBlock));
         }
     }
 
